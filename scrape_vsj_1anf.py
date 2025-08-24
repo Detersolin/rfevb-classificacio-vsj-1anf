@@ -15,6 +15,10 @@ CSV_OUT   = os.path.join(OUT_DIR, "classificacio.csv")
 TOP3_TXT  = os.path.join(OUT_DIR, "classificacio_top3.txt")
 VSJ_TXT   = os.path.join(OUT_DIR, "classificacio_vsj.txt")
 TEAM_NAME = "CV Sant Just"
+# Colors del club (canvia'ls si cal)
+TEAM_PRIMARY = "#0B3A82"   # blau VSJ (exemple)
+TEAM_ACCENT  = "#F2C300"   # groc VSJ (exemple)
+
 
 URL = "https://www.rfevb.com/primera-division-femenina-grupo-b-clasificacion"
 
