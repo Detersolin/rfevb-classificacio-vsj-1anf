@@ -1,11 +1,7 @@
 # -*- coding: utf-8 -*-
 """
-VSJ 1a Nacional Femení — Classificació RFEVB per OBS (Playwright + HTML)
-Genera:
-  classificacio.csv
-  classificacio_top3.txt
-  classificacio_vsj.txt
-  classificacio.html   (taula completa amb VSJ ressaltat)
+VSJ 1a Nacional Femení — Classificació RFEVB per OBS
+Genera: classificacio.csv, classificacio_top3.txt, classificacio_vsj.txt i classificacio.html
 """
 
 import os, sys, io, re, time
@@ -21,9 +17,9 @@ HTML_OUT  = os.path.join(OUT_DIR, "classificacio.html")
 URL = "https://www.rfevb.com/primera-division-femenina-grupo-b-clasificacion"
 TEAM_NAME = "CV Sant Just"
 
-# Colors corporatius VSJ (del logo que ens vas passar)
-TEAM_PRIMARY = "#305D87"  # blau
-TEAM_ACCENT  = "#F6F685"  # groc clar
+# Colors corporatius VSJ
+TEAM_PRIMARY = "#305D87"   # blau
+TEAM_ACCENT  = "#F6F685"   # groc clar
 
 # ===== Utilitats =====
 def ensure_dirs():
@@ -78,7 +74,7 @@ def score_table(df: pd.DataFrame) -> int:
     return score
 
 def pick_standing_table(tables):
-    """Tria la millor taula candidata."""
+    """Tria la millor taula candidata i mostra info al log."""
     best, best_s = None, -1
     for i, t in enumerate(tables):
         if t is None or t.empty:
@@ -94,9 +90,9 @@ def pick_standing_table(tables):
 def guess_columns(df: pd.DataFrame):
     """Intenta localitzar columnes de posició, equip i punts."""
     cols = [c.lower() for c in df.columns]
-    pos_i  = next((i for i,c in enumerate(cols) if re.search(r"\bpos", c)), 0)
-    team_i = next((i for i,c in enumerate(cols) if any(k in c for k in ["equipo","equip","team"])), min(1, len(cols)-1))
-    pts_i  = next((i for i,c in enumerate(cols) if any(k in c for k in ["puntos","points","pts","pt"])), len(cols)-1)
+    pos_i  = next((i for i, c in enumerate(cols) if re.search(r"\bpos", c)), 0)
+    team_i = next((i for i, c in enumerate(cols) if any(k in c for k in ["equipo", "equip", "team"])), min(1, len(cols)-1))
+    pts_i  = next((i for i, c in enumerate(cols) if any(k in c for k in ["puntos", "points", "pts", "pt"])), len(cols)-1)
     return pos_i, team_i, pts_i
 
 # ===== Sortides =====
@@ -138,8 +134,9 @@ def save_outputs(df: pd.DataFrame):
             f.write(f"{TEAM_NAME}: no trobat\n")
     print("⭐ VSJ:", VSJ_TXT)
 
-    # ===== HTML per OBS (PLANTILLA amb tokens; sense f-strings) =====
-    table_html = df.to_html(index=False, escape=False)
+    # ===== HTML complet per OBS (NO filtrar el df!) =====
+    df_html = df.copy()               # <- taula completa
+    table_html = df_html.to_html(index=False, escape=False)
 
     TEMPLATE = """<!DOCTYPE html>
 <html lang="ca">
