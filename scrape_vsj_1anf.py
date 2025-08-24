@@ -1,12 +1,11 @@
 # -*- coding: utf-8 -*-
 """
-VSJ 1a Nacional Femení — Classificació RFEVB per OBS (amb Playwright)
-
-Genera a:
+VSJ 1a Nacional Femení — Classificació RFEVB per OBS (Playwright + HTML)
+Genera:
   classificacio.csv
   classificacio_top3.txt
   classificacio_vsj.txt
-  classificacio.html   (taula completa, VSJ destacat)
+  classificacio.html   (taula completa amb VSJ ressaltat)
 """
 
 import os, sys, io, re, time
@@ -22,9 +21,9 @@ HTML_OUT  = os.path.join(OUT_DIR, "classificacio.html")
 URL = "https://www.rfevb.com/primera-division-femenina-grupo-b-clasificacion"
 TEAM_NAME = "CV Sant Just"
 
-# Colors corporatius VSJ
+# Colors corporatius VSJ (del logo que ens vas passar)
 TEAM_PRIMARY = "#305D87"  # blau
-TEAM_ACCENT  = "#F6F685"  # groc
+TEAM_ACCENT  = "#F6F685"  # groc clar
 
 # ===== Utilitats =====
 def ensure_dirs():
@@ -47,6 +46,7 @@ def render_html_with_playwright(url: str, timeout_ms=25000) -> str:
         return html
 
 def read_tables_from_html(html_text: str):
+    """Extreu taules HTML amb lxml i, si cal, html5lib."""
     for flavor in ("lxml", "html5lib"):
         try:
             tables = pd.read_html(io.StringIO(html_text), flavor=flavor)
@@ -57,6 +57,7 @@ def read_tables_from_html(html_text: str):
     return []
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Aplana MultiIndex i neteja noms de columnes."""
     if isinstance(df.columns, pd.MultiIndex):
         new_cols = []
         for tup in df.columns.values:
@@ -69,6 +70,7 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def score_table(df: pd.DataFrame) -> int:
+    """Heurística per detectar la taula de classificació."""
     kws = ["pos", "equipo", "equip", "team", "puntos", "points", "pj", "jug", "gan", "perd", "sets"]
     cols = [str(c).lower() for c in df.columns]
     score = sum(any(k in c for k in kws) for c in cols)
@@ -76,6 +78,7 @@ def score_table(df: pd.DataFrame) -> int:
     return score
 
 def pick_standing_table(tables):
+    """Tria la millor taula candidata."""
     best, best_s = None, -1
     for i, t in enumerate(tables):
         if t is None or t.empty:
@@ -89,6 +92,7 @@ def pick_standing_table(tables):
     return best
 
 def guess_columns(df: pd.DataFrame):
+    """Intenta localitzar columnes de posició, equip i punts."""
     cols = [c.lower() for c in df.columns]
     pos_i  = next((i for i,c in enumerate(cols) if re.search(r"\bpos", c)), 0)
     team_i = next((i for i,c in enumerate(cols) if any(k in c for k in ["equipo","equip","team"])), min(1, len(cols)-1))
@@ -101,11 +105,11 @@ def save_outputs(df: pd.DataFrame):
     df = df.dropna(how="all")
     df = normalize_columns(df)
 
-    # CSV
+    # CSV complet
     df.to_csv(CSV_OUT, index=False, encoding="utf-8-sig")
     print("💾 CSV:", CSV_OUT, "files:", len(df))
 
-    # TOP3
+    # TOP-3 text
     pos_i, team_i, pts_i = guess_columns(df)
     top = df.iloc[:3].fillna("")
     lines = []
@@ -134,34 +138,46 @@ def save_outputs(df: pd.DataFrame):
             f.write(f"{TEAM_NAME}: no trobat\n")
     print("⭐ VSJ:", VSJ_TXT)
 
-    # HTML
+    # ===== HTML per OBS (PLANTILLA amb tokens; sense f-strings) =====
     table_html = df.to_html(index=False, escape=False)
-    html = f"""<!DOCTYPE html>
+
+    TEMPLATE = """<!DOCTYPE html>
 <html lang="ca">
 <head>
 <meta charset="utf-8" />
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+<meta http-equiv="Pragma" content="no-cache" />
+<meta http-equiv="Expires" content="0" />
 <title>Classificació VSJ 1ANF</title>
 <style>
-  body {{ margin:0; padding:0; background:transparent; color:#fff; font-family:Arial,Helvetica,sans-serif; }}
-  table {{ border-collapse:collapse; font-size:22px; line-height:1.2; min-width:900px; border:1px solid rgba(255,255,255,.25); }}
-  thead th {{ background:{TEAM_PRIMARY}; color:#fff; padding:6px 10px; text-transform:uppercase; font-weight:700; }}
-  tbody td {{ border:1px solid rgba(255,255,255,.25); padding:6px 10px; }}
-  tbody tr:nth-child(even) td {{ background:rgba(255,255,255,.06); }}
-  .vsj-row td {{ background:{TEAM_ACCENT}; color:#111; font-weight:700; }}
+  html, body { margin:0; padding:0; background:transparent; color:#ffffff; font-family:Arial, Helvetica, sans-serif; }
+  table { border-collapse:collapse; font-size:22px; line-height:1.2; min-width:900px; border:1px solid rgba(255,255,255,.25); }
+  thead th { background: __TEAM_PRIMARY__; color:#fff; border:1px solid rgba(255,255,255,.25); padding:6px 10px; text-transform:uppercase; letter-spacing:.5px; font-weight:700; }
+  tbody td { border:1px solid rgba(255,255,255,.25); padding:6px 10px; }
+  tbody tr:nth-child(even) td { background: rgba(255,255,255,0.06); }
+  .vsj-row td { background: __TEAM_ACCENT__; color:#111; font-weight:700; }
 </style>
 </head>
 <body>
-{table_html}
+__TABLE__
 <script>
-  const TEAM = {TEAM_NAME!r}.toLowerCase();
-  document.querySelectorAll('table tbody tr').forEach(tr => {{
-    if (tr.innerText.toLowerCase().includes(TEAM)) tr.classList.add('vsj-row');
-  }});
+  const TEAM = __TEAM_NAME_JS__;
+  document.querySelectorAll('table tbody tr').forEach(tr => {
+    if (tr.innerText.toLowerCase().includes(TEAM)) { tr.classList.add('vsj-row'); }
+  });
   setTimeout(() => location.reload(), 30000);
 </script>
 </body>
 </html>
 """
+    html = (
+        TEMPLATE
+        .replace("__TEAM_PRIMARY__", TEAM_PRIMARY)
+        .replace("__TEAM_ACCENT__", TEAM_ACCENT)
+        .replace("__TABLE__", table_html)
+        .replace("__TEAM_NAME_JS__", repr(TEAM_NAME.lower()))
+    )
+
     with open(HTML_OUT, "w", encoding="utf-8") as f:
         f.write(html)
     print("🌐 HTML:", HTML_OUT)
