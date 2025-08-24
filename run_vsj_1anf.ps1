@@ -19,5 +19,4 @@ if (-not (Test-Path ".\.venv")) { py -m venv .venv }
 
 New-Item -ItemType Directory -Force -Path "C:\Guillem\Temporada 25-26\Overlay\VSJ\1ANF" | Out-Null
 
-# Bucle
 .\.venv\Scripts\python.exe .\scrape_vsj_1anf.py
