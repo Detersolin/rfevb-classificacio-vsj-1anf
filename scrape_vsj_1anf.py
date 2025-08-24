@@ -101,7 +101,7 @@ def save_outputs(df: pd.DataFrame):
     df = df.dropna(how="all")
     df = normalize_columns(df)
 
-    # CSV complet
+    # CSV complet (totes les files)
     df.to_csv(CSV_OUT, index=False, encoding="utf-8-sig")
     print("💾 CSV:", CSV_OUT, "files:", len(df))
 
@@ -118,7 +118,7 @@ def save_outputs(df: pd.DataFrame):
         f.write("\n".join(lines))
     print("📝 TOP3:", TOP3_TXT)
 
-    # Resum VSJ
+    # Resum VSJ (només per al .txt)
     vsj_row = None
     for _, r in df.fillna("").iterrows():
         if TEAM_NAME.lower() in " ".join(map(str, r.values)).lower():
@@ -134,8 +134,9 @@ def save_outputs(df: pd.DataFrame):
             f.write(f"{TEAM_NAME}: no trobat\n")
     print("⭐ VSJ:", VSJ_TXT)
 
-    # ===== HTML complet per OBS (NO filtrar el df!) =====
-    df_html = df.copy()               # <- taula completa
+    # ===== HTML complet per OBS (FORÇAT a partir del CSV) =====
+    # Re-llegim el CSV per garantir que no hi ha cap filtre aplicat al df en memòria.
+    df_html = pd.read_csv(CSV_OUT)
     table_html = df_html.to_html(index=False, escape=False)
 
     TEMPLATE = """<!DOCTYPE html>
