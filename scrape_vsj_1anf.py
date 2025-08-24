@@ -3,10 +3,10 @@
 VSJ 1a Nacional Femení — Classificació RFEVB per OBS (amb Playwright)
 
 Genera a:
-  C:\Guillem\Temporada 25-26\Overlay\VSJ\1ANF\classificacio.csv
-  C:\Guillem\Temporada 25-26\Overlay\VSJ\1ANF\classificacio_top3.txt
-  C:\Guillem\Temporada 25-26\Overlay\VSJ\1ANF\classificacio_vsj.txt
-  C:\Guillem\Temporada 25-26\Overlay\VSJ\1ANF\classificacio.html   (taula completa, VSJ destacat)
+  classificacio.csv
+  classificacio_top3.txt
+  classificacio_vsj.txt
+  classificacio.html   (taula completa, VSJ destacat)
 """
 
 import os, sys, io, re, time
@@ -22,9 +22,9 @@ HTML_OUT  = os.path.join(OUT_DIR, "classificacio.html")
 URL = "https://www.rfevb.com/primera-division-femenina-grupo-b-clasificacion"
 TEAM_NAME = "CV Sant Just"
 
-# Colors corporatius VSJ (del logo)
-TEAM_PRIMARY = "#305D87"  # blau VSJ
-TEAM_ACCENT  = "#F6F685"  # groc VSJ
+# Colors corporatius VSJ
+TEAM_PRIMARY = "#305D87"  # blau
+TEAM_ACCENT  = "#F6F685"  # groc
 
 # ===== Utilitats =====
 def ensure_dirs():
@@ -47,7 +47,6 @@ def render_html_with_playwright(url: str, timeout_ms=25000) -> str:
         return html
 
 def read_tables_from_html(html_text: str):
-    """Extreu taules HTML amb lxml i, si cal, html5lib."""
     for flavor in ("lxml", "html5lib"):
         try:
             tables = pd.read_html(io.StringIO(html_text), flavor=flavor)
@@ -58,7 +57,6 @@ def read_tables_from_html(html_text: str):
     return []
 
 def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Aplana MultiIndex i neteja noms de columnes."""
     if isinstance(df.columns, pd.MultiIndex):
         new_cols = []
         for tup in df.columns.values:
@@ -71,7 +69,6 @@ def normalize_columns(df: pd.DataFrame) -> pd.DataFrame:
     return df
 
 def score_table(df: pd.DataFrame) -> int:
-    """Heurística per detectar la taula de classificació."""
     kws = ["pos", "equipo", "equip", "team", "puntos", "points", "pj", "jug", "gan", "perd", "sets"]
     cols = [str(c).lower() for c in df.columns]
     score = sum(any(k in c for k in kws) for c in cols)
@@ -79,7 +76,6 @@ def score_table(df: pd.DataFrame) -> int:
     return score
 
 def pick_standing_table(tables):
-    """Tria la millor taula candidata."""
     best, best_s = None, -1
     for i, t in enumerate(tables):
         if t is None or t.empty:
@@ -93,7 +89,6 @@ def pick_standing_table(tables):
     return best
 
 def guess_columns(df: pd.DataFrame):
-    """Intenta localitzar columnes de posició, equip i punts."""
     cols = [c.lower() for c in df.columns]
     pos_i  = next((i for i,c in enumerate(cols) if re.search(r"\bpos", c)), 0)
     team_i = next((i for i,c in enumerate(cols) if any(k in c for k in ["equipo","equip","team"])), min(1, len(cols)-1))
@@ -106,11 +101,11 @@ def save_outputs(df: pd.DataFrame):
     df = df.dropna(how="all")
     df = normalize_columns(df)
 
-    # CSV complet
+    # CSV
     df.to_csv(CSV_OUT, index=False, encoding="utf-8-sig")
     print("💾 CSV:", CSV_OUT, "files:", len(df))
 
-    # TOP-3 (text)
+    # TOP3
     pos_i, team_i, pts_i = guess_columns(df)
     top = df.iloc[:3].fillna("")
     lines = []
@@ -126,8 +121,7 @@ def save_outputs(df: pd.DataFrame):
     # Resum VSJ
     vsj_row = None
     for _, r in df.fillna("").iterrows():
-        row_team = " ".join(map(str, r.values)).lower()
-        if TEAM_NAME.lower() in row_team:
+        if TEAM_NAME.lower() in " ".join(map(str, r.values)).lower():
             vsj_row = r
             break
     with open(VSJ_TXT, "w", encoding="utf-8") as f:
@@ -138,101 +132,4 @@ def save_outputs(df: pd.DataFrame):
             f.write(f"{pos} - {team} ({punts})\n")
         else:
             f.write(f"{TEAM_NAME}: no trobat\n")
-    print("⭐ VSJ:", VSJ_TXT)
-
-    # HTML complet per a OBS (fons transparent, VSJ destacat)
-    table_html = df.to_html(index=False, escape=False)
-    html = f"""<!DOCTYPE html>
-<html lang="ca">
-<head>
-<meta charset="utf-8" />
-<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-<meta http-equiv="Pragma" content="no-cache" />
-<meta http-equiv="Expires" content="0" />
-<title>Classificació VSJ 1ANF</title>
-<style>
-  :root {{
-    --team-primary: {TEAM_PRIMARY};
-    --team-accent:  {TEAM_ACCENT};
-    --fg: #ffffff;
-    --grid: rgba(255,255,255,0.25);
-  }}
-  html, body {{
-    margin: 0; padding: 0;
-    background: transparent;
-    color: var(--fg);
-    font-family: Arial, Helvetica, sans-serif;
-  }}
-  table {{
-    border-collapse: collapse;
-    font-size: 22px;
-    line-height: 1.2;
-    border: 1px solid var(--grid);
-    min-width: 900px;
-  }}
-  thead th {{
-    background: var(--team-primary);
-    color: #fff;
-    border: 1px solid var(--grid);
-    padding: 6px 10px;
-    text-transform: uppercase;
-    letter-spacing: .5px;
-    font-weight: 700;
-  }}
-  tbody td {{
-    border: 1px solid var(--grid);
-    padding: 6px 10px;
-  }}
-  tbody tr:nth-child(even) td {{ background: rgba(255,255,255,0.06); }}
-  .vsj-row td {{
-    background: {TEAM_ACCENT};
-    color: #111;
-    font-weight: 700;
-  }}
-</style>
-</head>
-<body>
-{table_html}
-<script>
-  // Marca la fila del CV Sant Just
-  const TEAM = {TEAM_NAME!r}.toLowerCase();
-  document.querySelectorAll('table tbody tr').forEach(tr => {{
-    if (tr.innerText.toLowerCase().includes(TEAM)) {{
-      tr.classList.add('vsj-row');
-    }}
-  }});
-  // Auto-refresh cada 30s (per si el Browser d'OBS no re-llegeix en guardar)
-  setTimeout(() => location.reload(), 30000);
-</script>
-</body>
-</html>
-"""
-    with open(HTML_OUT, "w", encoding="utf-8") as f:
-        f.write(html)
-    print("🌐 HTML:", HTML_OUT)
-
-# ===== Execució =====
-def run_once():
-    try:
-        print(f"➡️  Renderitzant: {URL}")
-        html = render_html_with_playwright(URL)
-        tables = read_tables_from_html(html)
-        print(f"   → trobades {len(tables)} taules")
-        df = pick_standing_table(tables) if tables else None
-        if df is not None and not df.empty:
-            save_outputs(df)
-        else:
-            print("⚠️  No s'ha pogut obtenir cap taula.")
-    except Exception as e:
-        print("✖️  Error:", e)
-
-def main_loop(poll_seconds=300):
-    while True:
-        run_once()
-        time.sleep(poll_seconds)
-
-if __name__ == "__main__":
-    if "--once" in sys.argv:
-        run_once()
-    else:
-        main_loop(300)
+    print("⭐ VSJ:", VS
