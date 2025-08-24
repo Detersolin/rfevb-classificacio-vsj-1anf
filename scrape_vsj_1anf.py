@@ -22,8 +22,8 @@ URL = "https://www.rfevb.com/primera-division-femenina-grupo-b-clasificacion"
 TEAM_NAME    = "CV Sant Just"
 
 # Colors corporatius (canvia'ls si cal)
-TEAM_PRIMARY = "#0B3A82"   # blau VSJ (exemple)
-TEAM_ACCENT  = "#F2C300"   # groc VSJ (exemple)
+TEAM_PRIMARY = "#305D87"   # blau VSJ (exemple)
+TEAM_ACCENT  = "#F6F685"   # groc VSJ (exemple)
 
 # ===== Utilitats =====
 def ensure_dirs():
