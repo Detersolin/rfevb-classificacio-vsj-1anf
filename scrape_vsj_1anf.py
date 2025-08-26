@@ -1,4 +1,3 @@
-$py = @'
 # -*- coding: utf-8 -*-
 """
 VSJ 1a Nacional Femení — Classificació RFEVB per OBS
@@ -91,7 +90,7 @@ def pick_standing_table(tables):
 def guess_columns(df: pd.DataFrame):
     """Intenta localitzar columnes de posició, equip i punts."""
     cols = [c.lower() for c in df.columns]
-    pos_i  = next((i for i, c in enumerate(cols) if re.search(r"\\bpos", c)), 0)
+    pos_i  = next((i for i, c in enumerate(cols) if re.search(r"\bpos", c)), 0)
     team_i = next((i for i, c in enumerate(cols) if any(k in c for k in ["equipo", "equip", "team"])), min(1, len(cols)-1))
     pts_i  = next((i for i, c in enumerate(cols) if any(k in c for k in ["puntos", "points", "pts", "pt"])), len(cols)-1)
     return pos_i, team_i, pts_i
@@ -116,7 +115,7 @@ def save_outputs(df: pd.DataFrame):
         punts = str(r.iloc[pts_i]).strip()
         lines.append(f"{pos} - {team} ({punts})")
     with open(TOP3_TXT, "w", encoding="utf-8") as f:
-        f.write("\\n".join(lines))
+        f.write("\n".join(lines))
     print("📝 TOP3:", TOP3_TXT)
 
     # Resum VSJ (només per al .txt)
@@ -130,13 +129,12 @@ def save_outputs(df: pd.DataFrame):
             pos   = str(vsj_row.iloc[pos_i]).strip()
             team  = str(vsj_row.iloc[team_i]).strip()
             punts = str(vsj_row.iloc[pts_i]).strip()
-            f.write(f"{pos} - {team} ({punts})\\n")
+            f.write(f"{pos} - {team} ({punts})\n")
         else:
-            f.write(f"{TEAM_NAME}: no trobat\\n")
+            f.write(f"{TEAM_NAME}: no trobat\n")
     print("⭐ VSJ:", VSJ_TXT)
 
     # ===== HTML complet per OBS (FORÇAT a partir del CSV) =====
-    # Re-llegim el CSV per garantir que no hi ha cap filtre aplicat al df en memòria.
     df_html = pd.read_csv(CSV_OUT)
     table_html = df_html.to_html(index=False, escape=False)
 
@@ -206,5 +204,3 @@ if __name__ == "__main__":
         run_once()
     else:
         main_loop(300)
-'@
-Set-Content -Path .\scrape_vsj_1anf.py -Value $py -Encoding UTF8
